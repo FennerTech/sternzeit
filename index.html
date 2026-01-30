@@ -1,0 +1,367 @@
+
+<!-- -----------------------------------------------
+Kelvin-Sternzeit
+(c) 2026 ff. Marco Fenner
+
+Urheberrechtlich geschützt.
+Kopieren erlaubt.
+Verändern nur mit Namensnennung des Autors ;-)
+Danke und Viel Spaß!
+------------------------------------------------ -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Kelvin-Sternzeit | Live-Odometer von Marco Fenner</title>
+    <meta name="description" content="Die präzise Kelvin-Sternzeit (Abrams-Timeline) als mechanisches Live-Odometer. Berechne deine Dienstzeit und fange Sterne im Star Trek Universum.">
+    <meta name="keywords" content="Kelvin-Sternzeit, Sternzeit Rechner, Star Trek Uhr, Abrams Timeline, Marco Fenner, Datenschrauber, Odometer, Weltraumzeit">
+    <meta name="author" content="Marco Fenner">
+    <meta name="robots" content="index, follow">
+
+    <meta property="og:title" content="Kelvin-Sternzeit Live-Chronometer">
+    <meta property="og:description" content="Präzise Zeitrechnung im Kelvin-Format mit interaktivem Sternen-Spiel.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="vorschaubild.jpg">
+    
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
+    <style>
+        body {
+            background-color: #000;
+            color: #ff9900;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #realtime-header {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            color: #5a82ff;
+            z-index: 10;
+        }
+
+        .display-frame {
+            display: flex;
+            align-items: center;
+            font-size: 6rem;
+            font-weight: bold;
+            border-top: 3px solid #5a82ff;
+            border-bottom: 3px solid #5a82ff;
+            padding: 10px 30px;
+            height: 1.2em;
+            overflow: hidden;
+            background: linear-gradient(180deg, #000 0%, #111 50%, #000 100%);
+            z-index: 10;
+        }
+
+        .odometer-digit {
+            position: relative;
+            width: 0.65em;
+            height: 1.2em;
+            overflow: hidden;
+        }
+
+        .digit-strip {
+            position: absolute;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            will-change: transform;
+            transition: none; 
+        }
+
+        .digit {
+            height: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .footer, .usage-info, .game-info, .nav-info, .counter-info {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #777;
+            letter-spacing: 1px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .nav-info { margin-top: 35px; display: flex; gap: 15px; justify-content: center; }
+        .counter-info { margin-top: 20px; }
+
+        .orange-val { color: #ff9900; font-weight: bold; }
+        .footer a { color: #5a82ff; text-decoration: none; font-weight: bold; }
+
+        .reset-btn, .nav-btn {
+            background: none; border: 1px solid #777; color: #777; padding: 2px 12px;
+            font-size: 0.7rem; text-transform: uppercase; border-radius: 3px;
+            cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block;
+        }
+
+        .reset-btn:hover, .nav-btn:hover { border-color: #ff9900; color: #ff9900; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); display: none; align-items: center; justify-content: center; z-index: 1000;
+        }
+
+        .modal-content {
+            background: #111; border: 2px solid #5a82ff; padding: 30px; max-width: 600px;
+            max-height: 80vh; overflow-y: auto; color: #ccc; line-height: 1.6; border-radius: 10px;
+            box-shadow: 0 0 30px rgba(90, 130, 255, 0.3); position: relative;
+            scrollbar-width: thin; scrollbar-color: #5a82ff #111;
+        }
+
+        .modal-content::-webkit-scrollbar { width: 8px; }
+        .modal-content::-webkit-scrollbar-track { background: #111; }
+        .modal-content::-webkit-scrollbar-thumb { background: #5a82ff; border-radius: 10px; }
+
+        .modal-content h3 { color: #5a82ff; margin-top: 0; border-bottom: 1px solid #5a82ff; padding-bottom: 10px; }
+        .modal-example { font-family: monospace; background: #000; padding: 10px; border-left: 3px solid #ff9900; margin: 10px 0; }
+
+        .star {
+            position: absolute; width: 35px; height: 35px; background-color: yellow;
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            cursor: pointer; z-index: 5; animation: pulse 0.5s infinite alternate, fadeIn 0.3s ease-in; box-shadow: 0 0 15px yellow;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.3); } }
+
+        #cookie-banner {
+            position: fixed; bottom: 20px; background: #111; border: 1px solid #5a82ff; padding: 15px 25px; color: #fff; display: none; z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+    <script language="JavaScript" src="https://www.besucherzaehler-kostenlos.de/js/counter.js.php?count=1&id=fennertech.github.iosternzeit&start=0&design=6"></script>
+
+    <div id="cookie-banner">
+        Diese Seite nutzt lokale Speicherung (Cookies).
+        <button class="nav-btn" style="color:#fff; border-color:#fff" onclick="acceptCookies()">Einverstanden</button>
+    </div>
+
+    <div id="modal-anleitung" class="modal-overlay" onclick="closeModal('modal-anleitung')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3>🕒 Kelvin-Zeit – Kurz erklärt</h3>
+            Die Kelvin-Zeit ist eine alternative Zeitdarstellung, die den Tag gleichmäßig in 10 000 Schritte unterteilt.
+            <br><br>
+            Sie kommt ohne Stunden, Minuten und Sekunden aus und zeigt den Zeitfortschritt eines Tages als fortlaufende Zahl.
+            <hr>
+            <b>Format:</b><br>
+            <span class="orange-val">Jahr.TagDesJahres.Tagesfortschritt</span><br><br>
+            <b>Beispiel:</b>
+            <div class="modal-example">2026.034.5273</div>
+            <b>So liest man das:</b>
+            <ul>
+                <li><b>2026</b> → das Jahr</li>
+                <li><b>034</b> → der 34. Tag des Jahres</li>
+                <li><b>5273</b> → der aktuelle Fortschritt des Tages</li>
+            </ul>
+            <small>(0 = Tagesbeginn, 9999 = Tagesende)</small>
+            <br><br>
+            Je höher die letzte Zahl, desto weiter ist der Tag bereits fortgeschritten.
+            <br><br>
+            <b>Vorteil:</b><br>
+            Die Kelvin-Zeit läuft kontinuierlich und präzise – ideal für technische, kreative oder spielerische Anwendungen, bei denen ein gleichmäßiger Zeitfluss wichtiger ist als klassische Uhrzeiten.
+            <hr>
+            <button class="nav-btn" onclick="closeModal('modal-anleitung')" style="width: 100%;">Konsole schließen</button>
+        </div>
+    </div>
+
+    <div id="modal-impressum" class="modal-overlay" onclick="closeModal('modal-impressum')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3>Informationen zu dieser Website / Impressum</h3>
+            <p><strong>Angaben gemäß § 5 TMG</strong></p>
+            <p><strong>Betreiber der Website:</strong><br>
+            Marco Fenner<br>
+            Wiardastraße 19<br>
+            26603 Aurich<br>
+            Deutschland</p>
+
+            <p><strong>Kontakt:</strong><br>
+            E-Mail: datenschrauber(at)gmail.com<br>
+            Telefon: +49 1573 004 2105</p>
+
+            <p>Vielen Dank für den Besuch meiner Website. Wenn Sie Ihnen gefallen hat, würde ich mich über eine kurze Nachricht sehr freuen. 😊</p>
+
+            <hr>
+            <p><strong>Haftungsausschluss:</strong></p>
+            <p><strong>Haftung für Inhalte</strong><br>
+            Als Diensteanbieter bin ich gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG bin ich als Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen oder oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen. Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen nach den allgemeinen Gesetzen bleiben hiervon unberührt. Eine diesbezügliche Haftung ist jedoch erst ab dem Zeitpunkt der Kenntnis einer konkreten Rechtsverletzung möglich. Bei Bekanntwerden von entsprechenden Rechtsverletzungen werde ich diese Inhalte umgehend entfernen.</p>
+
+            <p><strong>Haftung für Links</strong><br>
+            Mein Angebot enthält Links zu externen Websites Dritter, auf deren Inhalte ich keinen Einfluss habe. Deshalb kann ich für diese fremden Inhalte auch keine Gewähr übernehmen. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich. Die verlinkten Seiten wurden zum Zeitpunkt der Verlinkung auf mögliche Rechtsverstöße überprüft. Rechtswidrige Inhalte waren zum Zeitpunkt der Verlinkung nicht erkennbar. Eine permanente inhaltliche Kontrolle der verlinkten Seiten ist jedoch ohne konkrete Anhaltspunkte einer Rechtsverletzung nicht zumutbar. Bei Bekanntwerden von Rechtsverletzungen werde ich derartige Links umgehend entfernen.</p>
+
+            <p><strong>Urheberrecht</strong><br>
+            Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung des jeweiligen Autors bzw. Erstellers. Downloads und Kopien dieser Seite sind nur für den privaten, nicht kommerziellen Gebrauch gestattet. Soweit die Inhalte auf dieser Seite nicht vom Betreiber erstellt wurden, werden die Urheberrechte Dritter beachtet. Insbesondere werden Inhalte Dritter als solche gekennzeichnet. Sollten Sie trotzdem auf eine Urheberrechtsverletzung aufmerksam werden, bitte ich um einen entsprechenden Hinweis. Bei Bekanntwerden von Rechtsverletzungen werde ich diese Inhalte umgehend entfernen.</p>
+
+            <hr>
+            <p><strong>Datenschutz:</strong></p>
+            <p>Die Nutzung meiner Webseite ist in der Regel ohne Angabe personenbezogener Daten möglich. Soweit auf meinen Seiten personenbezogene Daten (beispielsweise Name, Anschrift oder E-Mail-Adressen) erhoben werden, erfolgt dies, soweit möglich, stets auf freiwilliger Basis. Diese Daten werden ohne Ihre ausdrückliche Zustimmung nicht an Dritte weitergegeben. Ich weise darauf hin, dass die Datenübertragung im Internet (z.B. bei der Kommunikation per E-Mail) Sicherheitslücken aufweisen kann. Ein lückenloser Schutz der Daten vor dem Zugriff durch Dritte ist nicht möglich.</p>
+
+            <p><strong>Besucherzähler von <a href="https://www.besucherzaehler-kostenlos.de" target="_blank">besucherzaehler-kostenlos.de</a></strong><br>
+            Diese Webseite verwendet einen externen Zähler, um die Anzahl der Webseitenaufrufe zu erfassen. Dafür wird ein Java-Script von einer externe Webseite geladen. Der Server von besucherzaehler-kostenlos.de speichert die IP-Adresse des Zugriffs anonymisiert und zeitlich begrenzt in einer LOG-Datei ab. Diese wird regelmäßig unwiderruflich gelöscht.</p>
+
+            <p>Um die korrekte Funktionsweise des Zählers zu gewährleisten, speichert der Besucherzähler zudem einen sogenannten Session-Cookie auf dem Computer des Besuchers ab. Dieser wird in der Regel vom Browser gelöscht, sobald er geschlossen wird. In diesem Cookie werden keine persönlichen Informationen gespeichert. Er enthält lediglich die Information der aufgerufenen Domain, sowie einen boolschen Tag (true/false), um den Besucher als bereits gezählt zu markieren.</p>
+
+            <p>Es werden auch darüberhinaus keine persönlichen oder personenbezogenen Daten vom Besucherzähler erhoben. Eine Nachverfolgung oder Zuordnung der Zugriffe ist zu keiner Zeit möglich. Ein besonderer Dank geht an <a href="https://www.urlaubsziel.info" target="_blank">urlaubsziel.info</a>, durch dessen Unterstützung dieser kostenlose Service erst möglich gemacht wird.</p>
+
+            <hr>
+            <p><strong>Einsehbarkeit des Quellcodes:</strong><br>
+            Der Quellcode dieser Seite ist vollständig für jedermann einsehbar.</p>
+
+            <p>
+                Besucher seit (Datum): <span class="BZseit orange-val"></span><br>
+                Aktuell online: <span class="BZonline orange-val"></span><br>
+                Besucher heute: <span class="BZheute orange-val"></span><br>
+                Besucher gestern: <span class="BZgestern orange-val"></span><br>
+                Besucher gesamt: <span class="BZgesamt orange-val"></span>
+            </p>
+
+            <button class="nav-btn" onclick="closeModal('modal-impressum')" style="width: 100%; margin-top: 10px;">Schließen</button>
+        </div>
+    </div>
+
+    <div id="realtime-header">Synchronisiere Zeitgeber...</div>
+    
+    <div class="display-frame">
+        <div id="prefix" style="margin-right: 5px;"></div>
+        <div class="odometer-digit"><div id="strip-1" class="digit-strip"></div></div>
+        <div class="odometer-digit"><div id="strip-2" class="digit-strip"></div></div>
+        <div class="odometer-digit"><div id="strip-3" class="digit-strip"></div></div>
+        <div class="odometer-digit"><div id="strip-4" class="digit-strip"></div></div>
+    </div>
+
+    <div class="footer">
+        Die aktuelle Kelvin-Sternzeit für deinen Browser (c) 2026 
+        <a href="mailto:datenschrauber@gmail.com">Datenschrauber</a> / M. Fenner
+    </div>
+
+    <div class="usage-info">
+        Du verwendest diese Uhr seit: <span id="diff-display" class="orange-val">0.0.0000</span>
+        <button class="reset-btn" onclick="confirmReset('time')">zurücksetzen</button>
+    </div>
+
+    <div class="game-info">
+        Aktueller Rang: <span id="rank-display" class="orange-val">Zivilist</span> | 
+        Schon <span id="clicked-stars" class="orange-val">0</span> von <span id="total-stars" class="orange-val">0</span> Sterne geklickt. 
+        Das sind <span id="star-percent" class="orange-val">0.0%</span>!
+        <button class="reset-btn" onclick="confirmReset('game')">zurücksetzen</button>
+    </div>
+
+    <div class="nav-info">
+        <a href="http://www.youtube.com/@Datenschrauber" target="_blank" class="nav-btn">YouTube</a>
+        <button class="nav-btn" onclick="openModal('modal-anleitung')">Anleitung</button>
+        <button class="nav-btn" onclick="openModal('modal-impressum')">Impressum</button>
+    </div>
+
+    <div class="counter-info">
+        <span class="BZgesamt"></span> User verwenden bereits diese Zeitrechnung (seit dem <span class="BZseit"></span>)
+    </div>
+
+    <script>
+        const strips = [document.getElementById('strip-1'), document.getElementById('strip-2'), document.getElementById('strip-3'), document.getElementById('strip-4')];
+        strips.forEach(strip => {
+            for (let i = 0; i <= 10; i++) {
+                const div = document.createElement('div');
+                div.className = 'digit'; div.innerText = i === 10 ? '0' : i;
+                strip.appendChild(div);
+            }
+        });
+
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        let starsClicked = parseInt(localStorage.getItem('stars_clicked')) || 0;
+        let starsShown = parseInt(localStorage.getItem('stars_shown')) || 0;
+        const ranks = [{ limit: 0, name: "Zivilist" }, { limit: 5, name: "Kadett" }, { limit: 15, name: "Fähnrich" }, { limit: 30, name: "Lieutenant" }, { limit: 50, name: "Commander" }, { limit: 100, name: "Captain" }, { limit: 250, name: "Admiral" }, { limit: 500, name: "Flottenadmiral" }];
+
+        function acceptCookies() {
+            localStorage.setItem('first_visit', new Date().getTime());
+            document.getElementById('cookie-banner').style.display = 'none';
+        }
+
+        function confirmReset(type) {
+            const msg = type === 'time' ? "Möchtest du die Nutzungsdauer wirklich zurücksetzen?" : "Möchtest du die Sternen-Statistik wirklich löschen?";
+            if (confirm(msg)) {
+                if (type === 'time') localStorage.setItem('first_visit', new Date().getTime());
+                else { starsClicked = 0; starsShown = 0; localStorage.setItem('stars_clicked', 0); localStorage.setItem('stars_shown', 0); updateGameDisplay(); }
+            }
+        }
+
+        if (!localStorage.getItem('first_visit')) { document.getElementById('cookie-banner').style.display = 'block'; }
+
+        function spawnStar() {
+            const star = document.createElement('div');
+            star.className = 'star';
+            const x = Math.random() * (window.innerWidth - 70) + 35;
+            const y = Math.random() * (window.innerHeight - 70) + 35;
+            star.style.left = x + 'px'; star.style.top = y + 'px';
+            document.body.appendChild(star);
+            starsShown++;
+            localStorage.setItem('stars_shown', starsShown);
+            updateGameDisplay();
+            star.onclick = (e) => {
+                e.stopPropagation();
+                starsClicked++; localStorage.setItem('stars_clicked', starsClicked);
+                updateGameDisplay(); star.style.backgroundColor = 'white'; setTimeout(() => star.remove(), 100);
+            };
+            setTimeout(() => { if (star.parentNode) star.remove(); }, 2000);
+            setTimeout(spawnStar, Math.random() * 60000 + 60000);
+        }
+
+        function updateGameDisplay() {
+            document.getElementById('clicked-stars').innerText = starsClicked;
+            document.getElementById('total-stars').innerText = starsShown;
+            const percent = starsShown > 0 ? (starsClicked / starsShown * 100).toFixed(1) : "0.0";
+            document.getElementById('star-percent').innerText = percent + "%";
+            let currentRank = "Zivilist";
+            for (let i = ranks.length - 1; i >= 0; i--) { if (starsClicked >= ranks[i].limit) { currentRank = ranks[i].name; break; } }
+            document.getElementById('rank-display').innerText = currentRank;
+        }
+
+        function update() {
+            const now = new Date();
+            const options = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
+            document.getElementById('realtime-header').innerText = `${now.toLocaleDateString('de-DE', options)} - ${now.toLocaleTimeString('de-DE', { hour12: false })}`;
+            const startOfYear = new Date(now.getFullYear(), 0, 0);
+            const msSinceMidnight = (now.getHours() * 3600000) + (now.getMinutes() * 60000) + (now.getSeconds() * 1000) + now.getMilliseconds();
+            const progress = msSinceMidnight / 86400000;
+            const dayOfYear = Math.floor((now - startOfYear) / 86400000);
+            const prefixStr = now.getFullYear() + "." + dayOfYear + ".";
+            document.getElementById('prefix').innerText = prefixStr;
+            const vTotal = progress * 10000;
+            const jumpBase = vTotal + 0.5;
+            strips[0].style.transform = `translateY(-${(Math.floor(jumpBase/1000)%10)*(100/11)}%)`;
+            strips[1].style.transform = `translateY(-${(Math.floor(jumpBase/100)%10)*(100/11)}%)`;
+            strips[2].style.transform = `translateY(-${(Math.floor(jumpBase/10)%10)*(100/11)}%)`;
+            strips[3].style.transform = `translateY(-${(vTotal % 10)*(100/11)}%)`;
+            document.title = `${prefixStr}${Math.floor(jumpBase/1000)%10}${Math.floor(jumpBase/100)%10}${Math.floor(jumpBase/10)%10}`;
+            const firstVisit = parseInt(localStorage.getItem('first_visit')) || now.getTime();
+            const diffMs = now.getTime() - firstVisit;
+            const dY = Math.floor(diffMs / (365.25 * 86400000)), dD = Math.floor((diffMs % (365.25 * 86400000)) / 86400000), dP = (diffMs % 86400000) / 86400000;
+            document.getElementById('diff-display').innerText = `${dY}.${dD}.${(dP * 10000).toFixed(0).padStart(4, '0')}`;
+        }
+
+        updateGameDisplay();
+        setTimeout(spawnStar, 60000);
+        setInterval(update, 16);
+        update();
+    </script>
+</body>
+</html>
