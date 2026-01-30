@@ -321,7 +321,7 @@ Danke und Viel Spaß!
                 starsClicked++; localStorage.setItem('stars_clicked', starsClicked);
                 updateGameDisplay(); star.style.backgroundColor = 'white'; setTimeout(() => star.remove(), 100);
             };
-            setTimeout(() => { if (star.parentNode) star.remove(); }, 2000);
+            setTimeout(() => { if (star.parentNode) star.remove(); }, 3000);
             setTimeout(spawnStar, Math.random() * 60000 + 60000);
         }
 
